@@ -1,0 +1,185 @@
+---
+title: "Course Project 1"
+author: "Funmi Olawole"
+date: "2025-03-14"
+output: html_document
+---
+#COURSE PROJECT I
+##ACTIVITY PATTERN
+###INTRODUCTION
+
+The dataset contains information about the activity log from a personal activity monitoring device of an individual. The analysis focus on the number of steps taken at 5-minute intervals across several days.The objective of this analysis is to explore the activity patterns of individuals and have a broad overview of how active this individual is in daily. We will also explore the comparison between the  activity in weekday and the weekend to see the activity pattern of the individual with respect to weekdays and weekend. Since devices like fitbit are used to take measurement for health improvement, the analysis should be able to give an insight to whether the activity log or pattern could improve the health of an individual based on their activity.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(tidyr)
+```
+
+To perform the analysis, there are some packages that are crucial to the analysis. The code chunk above is loading necessary libraries needed for the analysis.
+
+
+```{r cars}
+# Load the data
+data <- read.csv("activity.csv")
+
+# Check the structure of the data to understand its format
+str(data)
+
+# Convert the 'date' column to Date type
+data$date <- as.Date(data$date)
+
+# Check for missing values
+summary(data)
+```
+
+In order to perform the analysis, it important to check the structure of the data and look at the data to have an understanding of what the data look like and what needed to be done if there should be any adjustment for the data to be useful. The structures shows format of the variables in the data set. This data set shows that the variables are in 2 dinstinct format both integer and character. From viewing the data structure, it helps to be able to convert the column of the date to a date variable which makes it suitable for the analysis
+
+The summary shows the overview of the data. We found out that there are 2304 missing values from the column step in the data set. It also shows the minimum and maximum values for all variables in the data set.
+
+
+```{r}
+# Calculate total steps per day (ignoring missing values)
+steps_per_day <- data %>%
+  group_by(date) %>%
+  summarise(total_steps = sum(steps, na.rm = TRUE))
+
+# Plot histogram of total steps per day
+ggplot(steps_per_day, aes(x = total_steps)) +
+  geom_histogram(binwidth = 1000, fill = "red", color = "red") +
+  labs(title = "Histogram of Total Steps Per Day", x = "Total Steps", y = "Frequency")
+```
+
+The histogram shows the distribution of the total number of steps taken per day. The distribution is skewed, with most of the days having a moderate number of steps, other days with no steps at all and a few days with exceptionally high step counts. The histogram also shows that most of the distribution is clustered in the middle althoug right leaning but with high outliers on both ends.
+
+```{r}
+# Calculate mean and median of the total number of steps taken per day
+mean_steps <- mean(steps_per_day$total_steps)
+median_steps <- median(steps_per_day$total_steps)
+
+# Report mean and median
+cat("Mean Steps:", mean_steps, "\n")
+cat("Median Steps:", median_steps, "\n")
+```
+The mean is slightly lower than the median, indicating that the distribution of daily steps is right-skewed that is a few high-step days are influencing the mean. Mean is influence by outliers whereas median are not which explans why the mean is slightly lower than the median. 
+
+
+
+```{r}
+# Calculate the average steps for each 5-minute interval
+average_steps_interval <- data %>%
+  group_by(interval) %>%
+  summarise(avg_steps = mean(steps, na.rm = TRUE))
+
+# Plot time series
+ggplot(average_steps_interval, aes(x = interval, y = avg_steps)) +
+  geom_line(color = "red") +
+  labs(title = "Average Steps per 5-minute Interval", x = "Interval", y = "Average Steps")
+```
+
+The time series plot reveals that activity is highest in the morning, peaking around 8:00 AM. There are other smaller peaks through the day, suggesting higher activity during work hours.
+
+
+```{r}
+# Find the interval with the maximum average steps
+max_interval <- average_steps_interval[which.max(average_steps_interval$avg_steps), ]
+
+# Print the result
+cat("The 5-minute interval with the maximum average steps is", max_interval$interval, 
+    "with", max_interval$avg_steps, "average steps.\n")
+```
+ The 5-minute interval with the maximum average steps is at interval 835, with an average of 206.17 steps
+
+```{r}
+# Calculate total number of missing values (NA)
+missing_values <- sum(is.na(data$steps))
+
+# Report total missing values
+cat("Total number of missing values (NA):", missing_values, "\n")
+```
+The total missing values is 2304 which just echoed what the summary of the data showed earlier on in the analysis.
+
+```{r}
+# Impute missing values using the mean for the corresponding 5-minute interval
+data_imputed <- data %>%
+  left_join(average_steps_interval, by = "interval") %>%
+  mutate(steps = ifelse(is.na(steps), avg_steps, steps)) %>%
+  select(-avg_steps)  # Remove the avg_steps column
+
+# Check if there are any NAs left
+sum(is.na(data_imputed$steps))  
+```
+After imputing the missing values, it is crucial to check and see if the process was successful. The value of missing value being 0 confirmed that the imputation was successful.
+
+```{r}
+# Recalculate total steps per day after imputation
+steps_per_day_imputed <- data_imputed %>%
+  group_by(date) %>%
+  summarise(total_steps = sum(steps))
+
+# Plot histogram
+ggplot(steps_per_day_imputed, aes(x = total_steps)) +
+  geom_histogram(binwidth = 1000, fill = "red", color = "red") +
+  labs(title = "Histogram of Total Steps Per Day (After Imputation)", 
+       x = "Total Steps", y = "Frequency")
+```
+The histogram, here looks better than the first one after the missing values have been imputed. The frequency of 0's has been significantly reduced in comparison to the first histogram. The mode of this histogram is now at about 11000 total steps
+
+```{r}
+# Calculate mean and median of the total number of steps taken per day after imputation
+mean_steps_imputed <- mean(steps_per_day_imputed$total_steps)
+median_steps_imputed <- median(steps_per_day_imputed$total_steps)
+
+# Report mean and median after imputation
+cat("Mean Steps (After Imputation):", mean_steps_imputed, "\n")
+cat("Median Steps (After Imputation):", median_steps_imputed, "\n")
+```
+
+Imputing missing data has increased both the mean and median, as the missing values were replaced by the average values, which are typically closer to the overall mean. Also, the mean and median are same which suggest that the data distribution is symmetrical that is the data is evenly spread around the center with no significant outliers at both ends.
+
+
+
+```{r}
+cat("Difference in Mean Steps:", mean_steps_imputed - mean_steps, "\n")
+cat("Difference in Median Steps:", median_steps_imputed - median_steps, "\n")
+```
+
+The difference between the mean of the data before imputing the missing data is 1411.959 where that of the median is 371.19. This also reiterate that the previous data was skewed and the value of mean was influence by the presence of ouliers on both end. 
+```{r}
+# Create a new column to classify days as "weekday" or "weekend"
+data_imputed$day_type <- ifelse(weekdays(data_imputed$date) %in% c("Saturday", "Sunday"), "Weekend", "Weekday")
+
+# Check the new column
+head(data_imputed)
+```
+
+It has been suggested earlier by the other smaller spikes seen in the time series plot that it could have been as a result of active workday. it is important to be able to see if there is any difference between the level of activity in the weekday and weekends.  
+```{r}
+# Calculate average steps by day_type and interval
+average_steps_day_type <- data_imputed %>%
+  group_by(day_type, interval) %>%
+  summarise(avg_steps = mean(steps))
+
+# Plot panel plot (weekday vs. weekend)
+ggplot(average_steps_day_type, aes(x = interval, y = avg_steps)) +
+  geom_line(color = "red") +
+  facet_wrap(~ day_type, ncol = 1) +
+  labs(title = "Average Steps per Interval: Weekdays vs Weekends", x = "Interval", y = "Average Steps")
+```
+
+The plot reveals that activity levels are consistently higher on weekdays, especially during work hours. On weekends, activity levels are more spread out, with a peak around 10:00 AM.
+There is a noticeable difference in activity patterns, with weekdays showing a more concentrated pattern and weekends having more dispersed activity.
+
+In conclusion, the analysis of the activity dataset provides valuable insights into daily activity patterns:
+
+The majority of activity occurs during work hours, with peaks in the morning and around lunchtime.
+
+Imputing missing values using the average steps per interval resulted in higher mean and median total steps per day.It also helps to reducing the skeweness data set and infact makes it to be more symmetry in nature.
+
+Weekdays show a more structured and higher level of activity, while weekends have more varied activity patterns.
+
+Overall, this analysis sheds light on how daily routines influence activity and how missing data can impact the overall analysis of such data.
